@@ -1,0 +1,366 @@
+# Implementation Plan
+
+- [x] 1. Set up Xcode project and core structure
+
+  - Create new Xcode project with SwiftUI App template
+  - Configure as multiplatform app (iOS, iPadOS, macOS)
+  - Set bundle identifier to `tech.newtree.icon-maker`
+  - Set minimum deployment targets: iOS 17.0, iPadOS 17.0, macOS 14.0
+  - Add required frameworks: Vision, CoreImage, PhotosUI
+  - Configure Info.plist with photo library usage description
+  - Create folder structure: Views/, ViewModels/, Models/, Services/, Utilities/, Resources/
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
+
+- [x] 2. Implement core data models
+
+  - [x] 2.1 Create IconSize model with size, scale, idiom, and filename properties
+    - Define IconSize struct conforming to Identifiable
+    - Add computed properties for pointSize and pixelSize
+    - _Requirements: 8.2, 8.3, 8.4_
+  - [x] 2.2 Create IconSizeSpec with platform-specific size arrays
+    - Define static arrays for iOS, iPadOS, and macOS icon sizes
+    - Include all required sizes per Apple's guidelines
+    - _Requirements: 8.2, 8.3, 8.4_
+  - [x] 2.3 Create Platform enum and AppIconSet model
+    - Define Platform enum (iOS, iPadOS, macOS, all)
+    - Create AppIconSet struct with icons dictionary and platforms set
+    - Implement contentsJSON() method to generate Contents.json data
+    - _Requirements: 8.1, 9.2_
+  - [x] 2.4 Create BackgroundStyle enum
+    - Define cases: transparent, solid(Color), gradient(Gradient)
+    - Add displayName computed property
+    - _Requirements: 5.1, 5.2, 5.3_
+  - [x] 2.5 Create EditingState model for undo/redo
+    - Define struct with image, transform, backgroundRemoved, enhanced, backgroundStyle
+    - _Requirements: 6.6_
+
+- [x] 3. Implement AIImageService for AI-powered features
+
+  - [x] 3.1 Create AIImageService class with subject detection
+    - Implement detectSubject(in:) using VNGenerateForegroundInstanceMaskRequest
+    - Handle Vision request execution and result processing
+    - Convert Vision mask to UIImage
+    - _Requirements: 2.1, 2.2, 2.5_
+  - [x] 3.2 Implement background removal functionality
+    - Create removeBackground(from:) method
+    - Use iOS 17+ subject lifting API when available
+    - Apply mask to create transparent background image
+    - Handle errors gracefully with proper error types
+    - _Requirements: 2.3, 2.4, 2.6, 2.7_
+  - [x] 3.3 Implement image enhancement with Core Image
+    - Create enhanceImage(\_:) method
+    - Apply CIColorControls for brightness/contrast/saturation
+    - Apply CISharpenLuminance for detail enhancement
+    - Apply CIVibrance for color optimization
+    - _Requirements: 3.1, 3.2, 3.3, 3.5_
+  - [x] 3.4 Implement saliency analysis for smart crop suggestions
+    - Create analyzeSaliency(in:) using VNGenerateAttentionBasedSaliencyImageRequest
+    - Process saliency map to identify 2-3 optimal crop regions
+    - Return array of CGRect representing suggested crops
+    - Apply rule of thirds and subject centering logic
+    - _Requirements: 4.1, 4.2, 4.4, 4.5_
+  - [x] 3.5 Implement dominant color extraction
+    - Create extractDominantColors(from:) method
+    - Use k-means clustering or histogram analysis
+    - Return 5-8 dominant colors from image
+    - _Requirements: 5.6_
+
+- [x] 4. Implement ImageProcessor service
+
+  - [x] 4.1 Create ImageProcessor class with resize functionality
+    - Implement resize(\_:to:scale:) using Core Graphics
+    - Use high-quality interpolation (kCGInterpolationHigh)
+    - Handle both upscaling and downscaling
+    - _Requirements: 8.5, 12.2_
+  - [x] 4.2 Implement crop functionality
+    - Create crop(\_:to:) method
+    - Handle coordinate system conversions
+    - Maintain image quality during crop
+    - _Requirements: 6.1_
+  - [x] 4.3 Implement image compositing with backgrounds
+    - Create composite(subject:background:size:) method
+    - Handle transparent backgrounds
+    - Render solid color backgrounds
+    - Render gradient backgrounds
+    - Preserve alpha channel correctly
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 8.6_
+  - [x] 4.4 Implement transform application
+    - Create applyTransform(\_:to:) method
+    - Handle rotation, scale, and translation
+    - Maintain image quality
+    - _Requirements: 6.2, 6.3, 6.4_
+
+- [x] 5. Implement IconExporter service
+
+  - [x] 5.1 Create IconExporter class with icon set generation
+    - Implement generateIconSet(from:platforms:) method
+    - Loop through selected platform sizes
+    - Generate each icon using ImageProcessor
+    - Return AppIconSet with all generated icons
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+  - [x] 5.2 Implement AppIcon.appiconset creation
+    - Create createAppIconSet(\_:at:) method
+    - Create AppIcon.appiconset directory structure
+    - Write each icon image file with correct filename
+    - Generate and write Contents.json file
+    - _Requirements: 9.1, 9.2, 9.3, 9.4_
+  - [x] 5.3 Implement ZIP archive creation
+    - Create createZipArchive(from:) method
+    - Use Compression framework or ZIPFoundation
+    - Return URL to created ZIP file
+    - _Requirements: 9.6_
+  - [x] 5.4 Add error handling for export failures
+    - Handle file system errors
+    - Handle permission errors
+    - Provide clear error messages
+    - _Requirements: 9.7_
+
+- [x] 6. Implement ImageEditorViewModel
+
+  - [x] 6.1 Create ImageEditorViewModel class with published properties
+    - Define @Published properties: originalImage, processedImage, isBackgroundRemoved, isEnhanced, backgroundStyle, cropSuggestions, isProcessing
+    - Initialize with AIImageService and ImageProcessor dependencies
+    - _Requirements: 2.1, 3.1, 5.1, 6.1_
+  - [x] 6.2 Implement background removal action
+    - Create removeBackground() async method
+    - Call AIImageService.removeBackground
+    - Update processedImage and isBackgroundRemoved
+    - Handle loading state with isProcessing
+    - _Requirements: 2.3, 2.7_
+  - [x] 6.3 Implement image enhancement action
+    - Create enhanceImage() async method
+    - Call AIImageService.enhanceImage
+    - Update processedImage and isEnhanced
+    - Show before/after comparison capability
+    - _Requirements: 3.1, 3.4_
+  - [x] 6.4 Implement crop suggestions generation
+    - Create generateCropSuggestions() async method
+    - Call AIImageService.analyzeSaliency
+    - Update cropSuggestions array
+    - _Requirements: 4.1, 4.2_
+  - [x] 6.5 Implement background style application
+    - Create applyBackground(\_:) async method
+    - Call ImageProcessor.composite with selected style
+    - Update processedImage and backgroundStyle
+    - Support real-time preview updates
+    - _Requirements: 5.2, 5.3, 5.4_
+  - [x] 6.6 Implement undo/redo functionality
+    - Create editHistory array to store EditingState
+    - Implement undo() method to restore previous state
+    - Implement redo() method to restore next state
+    - Update history on each edit action
+    - _Requirements: 6.6_
+
+- [x] 7. Implement WelcomeView
+
+  - [x] 7.1 Create WelcomeView with photo selection
+    - Build SwiftUI view with app branding
+    - Add "Select Photo" button
+    - Integrate PhotosPicker from PhotosUI
+    - Handle PhotosPickerItem selection
+    - Load selected image as UIImage
+    - Navigate to ImageEditorView on selection
+    - _Requirements: 1.1, 1.2, 1.4, 1.6_
+  - [x] 7.2 Add camera support for iOS/iPadOS
+    - Add conditional camera button for iOS/iPadOS
+    - Integrate UIImagePickerController for camera
+    - Handle camera permissions
+    - _Requirements: 1.3_
+  - [x] 7.3 Handle photo picker cancellation
+    - Return to welcome screen on cancel
+    - _Requirements: 1.5_
+
+- [x] 8. Implement AIToolsPanel view
+
+  - [x] 8.1 Create AIToolsPanel with background removal toggle
+    - Build SwiftUI view with toggle control
+    - Bind to viewModel.isBackgroundRemoved
+    - Trigger removeBackground() on toggle
+    - Show loading indicator during processing
+    - _Requirements: 2.3, 2.7_
+  - [x] 8.2 Add auto-enhance button
+    - Create button to trigger enhancement
+    - Bind to viewModel.isEnhanced
+    - Call enhanceImage() on tap
+    - Show before/after toggle
+    - _Requirements: 3.1, 3.4_
+  - [x] 8.3 Add smart crop suggestions display
+    - Display crop suggestion thumbnails
+    - Show visual indicators for each suggestion
+    - Handle tap to apply suggested crop
+    - _Requirements: 4.3, 4.6_
+  - [x] 8.4 Add background style picker
+    - Create picker for transparent/solid/gradient options
+    - Show color palette for solid colors
+    - Display gradient options
+    - Update preview in real-time
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+- [x] 9. Implement ImageEditorView with gesture controls
+
+  - [x] 9.1 Create ImageEditorView with image canvas
+    - Build main editing view with StateObject viewModel
+    - Display processedImage in canvas
+    - Add square crop overlay guide
+    - Show grid overlay for composition
+    - _Requirements: 6.1, 6.5_
+  - [x] 9.2 Implement pinch-to-zoom gesture
+    - Add MagnificationGesture to canvas
+    - Update scale state
+    - Apply scale transform to image
+    - _Requirements: 6.2_
+  - [x] 9.3 Implement drag-to-pan gesture
+    - Add DragGesture to canvas
+    - Update offset state
+    - Apply translation transform to image
+    - _Requirements: 6.3_
+  - [x] 9.4 Implement rotation gesture
+    - Add RotationGesture to canvas
+    - Update rotation state
+    - Apply rotation transform to image
+    - _Requirements: 6.4_
+  - [x] 9.5 Integrate AIToolsPanel
+    - Embed AIToolsPanel in view
+    - Pass viewModel bindings
+    - Position appropriately for each platform
+    - _Requirements: 2.1, 3.1, 4.1, 5.1_
+  - [x] 9.6 Add navigation to preview
+    - Create "Preview" button
+    - Navigate to PreviewView with processed image
+    - _Requirements: 7.1_
+
+- [x] 10. Implement PreviewView
+
+  - [x] 10.1 Create PreviewView with icon grid
+    - Build view accepting processedImage and iconSizes
+    - Create grid layout using LazyVGrid
+    - Generate preview icons at different sizes
+    - Display size labels for each icon
+    - _Requirements: 7.1, 7.2, 7.5_
+  - [x] 10.2 Add platform filter
+    - Create picker for iOS/iPadOS/macOS/All
+    - Filter displayed icons based on selection
+    - _Requirements: 8.1_
+  - [x] 10.3 Add context mockups
+    - Show icons in simulated home screen context
+    - Render with proper @1x, @2x, @3x scaling
+    - _Requirements: 7.3, 7.4_
+  - [x] 10.4 Implement real-time preview updates
+    - Update all previews when image changes
+    - Use async image generation
+    - _Requirements: 7.6_
+  - [x] 10.5 Add navigation to export
+    - Create "Export" button
+    - Navigate to ExportView
+    - _Requirements: 9.1_
+
+- [x] 11. Implement ExportView and export functionality
+
+  - [x] 11.1 Create ExportViewModel
+    - Define @Published properties: selectedPlatforms, exportFormat, isExporting, progress
+    - Initialize with IconExporter dependency
+    - Implement generateIcons(from:) async method
+    - Implement exportIconSet(\_:) async throws method
+    - _Requirements: 8.1, 9.1_
+  - [x] 11.2 Create ExportView with platform selection
+    - Build view with StateObject viewModel
+    - Add platform checkboxes (iOS, iPadOS, macOS)
+    - Add export format picker (folder/ZIP)
+    - _Requirements: 8.1, 9.6_
+  - [x] 11.3 Implement export button and progress
+    - Create "Export" button
+    - Show progress indicator during export
+    - Display progress percentage
+    - _Requirements: 9.1, 12.3, 12.4_
+  - [x] 11.4 Integrate share sheet
+    - Present ShareSheet/UIActivityViewController on export completion
+    - Pass exported AppIcon.appiconset URL
+    - Handle share completion
+    - _Requirements: 9.5_
+  - [x] 11.5 Add error handling
+    - Display alert on export failure
+    - Show clear error messages
+    - Provide retry option
+    - _Requirements: 9.7_
+
+- [x] 12. Implement platform-specific features
+
+  - [x] 12.1 Add keyboard shortcuts for macOS
+    - Implement Cmd+Z for undo
+    - Implement Cmd+Shift+Z for redo
+    - Add other common shortcuts
+    - _Requirements: 11.3_
+  - [x] 12.2 Add haptic feedback for iOS/iPadOS
+    - Trigger haptics on button taps
+    - Use appropriate haptic types
+    - _Requirements: 11.1, 11.2_
+  - [x] 12.3 Optimize layouts for each platform
+    - Create iPhone-optimized layout
+    - Create iPad-optimized layout with larger canvas
+    - Create Mac-optimized layout with menu bar
+    - _Requirements: 11.1, 11.2, 11.3_
+  - [x] 12.4 Add drag-and-drop support for macOS
+    - Accept image drops on WelcomeView
+    - Handle dropped image files
+    - _Requirements: 11.3_
+
+- [x] 13. Implement accessibility and polish
+
+  - [x] 13.1 Add VoiceOver labels and hints
+    - Label all interactive controls
+    - Add accessibility hints for complex gestures
+    - Test with VoiceOver enabled
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+  - [x] 13.2 Support Dynamic Type
+    - Use system fonts with .body, .headline styles
+    - Test with large text sizes
+    - _Requirements: 10.2_
+  - [x] 13.3 Implement dark mode support
+    - Use semantic colors throughout
+    - Test all views in dark mode
+    - Ensure proper contrast
+    - _Requirements: 10.1, 10.2, 10.3_
+  - [x] 13.4 Add app icon for the app itself
+    - Design and create app icon
+    - Add to Assets.xcassets
+    - _Requirements: 11.4_
+  - [x] 13.5 Implement error handling UI
+    - Create reusable error alert modifier
+    - Display user-friendly error messages
+    - Add recovery actions where appropriate
+    - _Requirements: 2.6, 9.7_
+  - [x] 13.6 Add loading states and animations
+    - Show loading indicators during AI processing
+    - Add smooth transitions between views
+    - Implement progress animations
+    - _Requirements: 2.7, 12.4_
+
+- [x] 14. Performance optimization and testing
+  - [x] 14.1 Implement image caching
+    - Cache processed images to avoid reprocessing
+    - Implement memory-efficient cache with size limits
+    - Clear cache when memory warning received
+    - _Requirements: 12.1, 12.6_
+  - [x] 14.2 Optimize AI processing performance
+    - Ensure background removal completes within 3 seconds
+    - Optimize enhancement to complete within 1 second
+    - Use appropriate image sizes for processing
+    - _Requirements: 12.1, 12.2_
+  - [x] 14.3 Optimize icon generation performance
+    - Generate icons asynchronously
+    - Use concurrent processing where possible
+    - Ensure export completes within 5 seconds
+    - _Requirements: 12.3_
+  - [x] 14.4 Test with various image types
+    - Test with portrait photos
+    - Test with landscape photos
+    - Test with complex backgrounds
+    - Test with large images (>10MB)›
+    - Verify quality at all icon sizes
+    - _Requirements: 12.5_
+  - [x] 14.5 Verify Xcode integration
+    - Export test icon set
+    - Import into test Xcode project
+    - Verify all sizes display correctly
+    - Test on actual iOS, iPadOS, and macOS devices
+    - _Requirements: 9.1, 9.2, 9.3, 9.4_

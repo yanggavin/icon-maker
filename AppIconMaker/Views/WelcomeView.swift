@@ -191,19 +191,42 @@ struct WelcomeView: View {
     }
     
     private func loadSelectedImage() async {
-        guard let selectedItem = selectedItem else { return }
+        guard let selectedItem = selectedItem else {
+            print("DEBUG: No selected item")
+            return
+        }
+        
+        print("DEBUG: Loading selected image...")
         
         do {
-            if let data = try await selectedItem.loadTransferable(type: Data.self),
-               let uiImage = UIImage(data: data) {
-                selectedImage = uiImage
-                showImageEditor = true
+            if let data = try await selectedItem.loadTransferable(type: Data.self) {
+                print("DEBUG: Data loaded, size: \(data.count) bytes")
+                
+                if let uiImage = UIImage(data: data) {
+                    print("DEBUG: UIImage created successfully, size: \(uiImage.size)")
+                    
+                    await MainActor.run {
+                        selectedImage = uiImage
+                        showImageEditor = true
+                        print("DEBUG: Navigation triggered, showImageEditor = \(showImageEditor)")
+                    }
+                } else {
+                    print("DEBUG: Failed to create UIImage from data")
+                    await MainActor.run {
+                        currentError = AppIconMakerError.imageLoadFailed
+                    }
+                }
             } else {
-                currentError = AppIconMakerError.imageLoadFailed
+                print("DEBUG: Failed to load data from PhotosPickerItem")
+                await MainActor.run {
+                    currentError = AppIconMakerError.imageLoadFailed
+                }
             }
         } catch {
-            currentError = AppIconMakerError.imageLoadFailed
-            print("Failed to load image: \(error.localizedDescription)")
+            print("DEBUG: Error loading image: \(error.localizedDescription)")
+            await MainActor.run {
+                currentError = AppIconMakerError.imageLoadFailed
+            }
         }
     }
     

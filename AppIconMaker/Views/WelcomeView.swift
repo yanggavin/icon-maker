@@ -23,17 +23,17 @@ struct WelcomeView: View {
     var body: some View {
         NavigationStack {
             content
+                .navigationDestination(isPresented: $showImageEditor) {
+                    if let image = selectedImage {
+                        ImageEditorView(viewModel: ImageEditorViewModel(image: image))
+                            .transition(.opacity.combined(with: .scale))
+                    }
+                }
         }
         .sheet(isPresented: $showCamera) {
             ImagePicker(image: $cameraImage, sourceType: .camera)
         }
         .errorAlert(error: $currentError)
-        .navigationDestination(isPresented: $showImageEditor) {
-            if let image = selectedImage {
-                ImageEditorView(viewModel: ImageEditorViewModel(image: image))
-                    .transition(.opacity.combined(with: .scale))
-            }
-        }
         .onChange(of: selectedItem) { oldValue, newValue in
             Task {
                 await loadSelectedImage()

@@ -13,6 +13,8 @@ struct ImageEditorView: View {
     @State private var offset: CGSize = .zero
     @State private var rotation: Angle = .zero
     @State private var showGrid: Bool = true
+    @State private var showAITools: Bool = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
         GeometryReader { geometry in
@@ -160,11 +162,39 @@ struct ImageEditorView: View {
         }
         .navigationTitle("Edit Icon")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            #if os(iOS)
+            if horizontalSizeClass == .compact {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        HapticFeedback.light()
+                        showAITools.toggle()
+                    }) {
+                        Image(systemName: "wand.and.stars")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("AI Tools")
+                    .accessibilityHint("Opens AI-powered editing tools")
+                }
+            }
+            #endif
+        }
         #if os(iOS)
-        .sheet(isPresented: .constant(horizontalSizeClass == .compact)) {
+        .sheet(isPresented: $showAITools) {
             // iPhone layout - bottom sheet
-            ScrollView {
-                AIToolsPanel(viewModel: viewModel)
+            NavigationStack {
+                ScrollView {
+                    AIToolsPanel(viewModel: viewModel)
+                }
+                .navigationTitle("AI Tools")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showAITools = false
+                        }
+                    }
+                }
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)

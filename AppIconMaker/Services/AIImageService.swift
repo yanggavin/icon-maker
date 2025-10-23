@@ -409,7 +409,14 @@ class AIImageService {
         suggestions.append(centerCrop)
         
         // Return up to 3 unique suggestions
-        return Array(Set(suggestions)).prefix(3).map { $0 }
+        // Note: Using manual uniqueness check for iOS 17 compatibility
+        var uniqueSuggestions: [CGRect] = []
+        for suggestion in suggestions {
+            if !uniqueSuggestions.contains(where: { $0 == suggestion }) {
+                uniqueSuggestions.append(suggestion)
+            }
+        }
+        return Array(uniqueSuggestions.prefix(3))
     }
     
     /// Creates a square crop centered on a bounding box

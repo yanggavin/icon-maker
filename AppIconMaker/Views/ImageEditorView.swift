@@ -14,7 +14,6 @@ struct ImageEditorView: View {
     @State private var rotation: Angle = .zero
     @State private var showGrid: Bool = true
     @State private var showAITools: Bool = false
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
         GeometryReader { geometry in
